@@ -1,0 +1,38 @@
+{
+  "eventTypes": {
+    "STATUS_CREATED": "status_created",
+    "STATUS_RECEIVED": "status_received",
+    "STATUS_READ": "status_read",
+    "MESSAGE_SENT": "message_sent",
+    "MESSAGE_DELIVERED": "message_delivered",
+    "MESSAGE_READ": "message_read",
+    "MESSAGE_PLAYED": "message_played",
+    "MESSAGE_CREATED": "message_created",
+    "MESSAGE_REVOKED": "message_revoked",
+    "DISAPPEARING_MODE_CHANGED": "disappearing_mode_changed",
+    "CONTACT_ADD": "contact_add",
+    "CONTACT_CHANGE": "contact_change",
+    "CONTACT_REMOVE": "contact_remove",
+    "CONTACTS_INITIAL": "contacts_initial"
+  },
+  "messageTypes": [
+    "chat", "image", "video", "audio", "document", 
+    "sticker", "ptt", "ptv", "album", "gp2", 
+    "revoked", "notification_template"
+  ],
+  "ignoredTypes": [
+    { "type": "e2e_notification", "subtypes": ["encrypt"] },
+    { "type": "ciphertext" }
+  ],
+  "groupActions": {
+    "add": "member_added",
+    "remove": "member_removed",
+    "promote": "member_promoted",
+    "demote": "member_demoted",
+    "modify": "group_modified",
+    "create": "group_created",
+    "subject": "name_changed",
+    "description": "description_changed",
+    "picture": "picture_changed"
+  }
+}

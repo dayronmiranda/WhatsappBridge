@@ -1,0 +1,18 @@
+{
+  "name": "whatsapp-bridge",
+  "version": "1.0.0",
+  "description": "WhatsApp Web Bridge to Webhook with NATS storage",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "rebrowser-puppeteer-core": "^24.8.1",
+    "nats": "^2.15.1",
+    "axios": "^1.6.0",
+    "readline": "^1.3.0"
+  },
+  "keywords": ["whatsapp", "webhook", "bridge", "nats"],
+  "author": "",
+  "license": "MIT"
+}

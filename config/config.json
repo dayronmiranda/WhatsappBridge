@@ -1,0 +1,51 @@
+{
+  "debug": {
+    "enabled": true,
+    "statsInterval": 10000
+  },
+  "messageStats": {
+    "enabled": true,
+    "displayInterval": 15000
+  },
+  "injection": {
+    "maxAttempts": 2,
+    "retryInterval": 2000,
+    "verificationTimeout": 5000
+  },
+  "polling": {
+    "interval": 1000,
+    "maxRetries": 3,
+    "retryDelay": 2000
+  },
+  "nats": {
+    "servers": ["nats://localhost:4222"],
+    "subject": "whatsapp.events",
+    "contactSubject": "whatsapp.contact",
+    "ignoredSubject": "whatsapp.ignore",
+    "precenseSubject": "whatsapp.precense",
+    "maxReconnect": 5
+  },
+  "browser": {
+    "headless": false,
+    "userDataDir": "./session",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    "executablePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "args": [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--no-first-run",
+      "--no-zygote",
+      "--disable-gpu"
+    ]
+  },
+  "whatsapp": {
+    "url": "https://web.whatsapp.com",
+    "selectors": {
+      "qrCode": "div[data-testid='qr-code']",
+      "mainApp": "#app .two",
+      "chatList": "div[data-testid='chat-list']"
+    }
+  }
+}
