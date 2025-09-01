@@ -1,22 +1,19 @@
-// WhatsApp Store Access - Based on whatsapp-web.js ExposeStore approach
+// WhatsApp Store Access - Unified Event Injection System
 (function() {
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   function log(msg) {
-    // Enable console logs temporarily for debugging
-    console.log('[WRadar:store]', msg);
+    console.log('[WhatsAppBridge]', msg);
   }
 
   function emit(event, raw) {
     try {
-      const payload = { event, timestamp: Date.now(), rawData: raw };
-      const bridge = window[Symbol.for('__wb_bridge')];
-      if (bridge && bridge.enqueue) {
-        bridge.enqueue(payload);
-        log(`Emitted: ${event}`);
-      } else {
-        log('Bridge not available');
-      }
+      window.whatsappEvents.push({
+        type: event,
+        data: raw,
+        timestamp: Date.now()
+      });
+      log(`Event emitted: ${event}`);
     } catch (e) {
       log('Emit error: ' + String(e));
     }
@@ -486,12 +483,148 @@
       log('Message setup error: ' + String(e));
     }
 
-    // Contact events disabled here; handled in index.js injection to unify pipeline
+    // Contact events with deduplication and batching
     try {
-      log('Skipping contact listeners in store.js (handled by index.js)');
+      const getContactCollection = () => {
+        if (Store.Contact && typeof Store.Contact.on === 'function') return Store.Contact;
+        try {
+          const mod = window.require && window.require('WAWebContactCollection');
+          if (mod && mod.ContactCollection) return mod.ContactCollection;
+        } catch (e) {}
+        return null;
+      };
+
+      const Contact = getContactCollection();
+      if (Contact) {
+        log('Setting up contact listeners');
+        const seen = new Map();
+        const shouldProcess = (key, ttlMs) => {
+          const now = Date.now();
+          const last = seen.get(key) || 0;
+          if (now - last < ttlMs) return false;
+          seen.set(key, now);
+          if (seen.size > 1000) {
+            const cutoff = now - 10 * 60 * 1000;
+            for (const [k, ts] of seen) if (ts < cutoff) seen.delete(k);
+          }
+          return true;
+        };
+        const getKey = (contact, type) => {
+          const id = (contact?.id?._serialized || contact?.id || contact?.phoneNumber || 'unknown');
+          return `${id}_${type}`;
+        };
+
+        if (typeof Contact.on === 'function') {
+          Contact.on('add', (c) => {
+            const key = getKey(c, 'add');
+            if (!shouldProcess(key, 120000)) return;
+            emit('contact_add', serializeContact(c));
+          });
+
+          Contact.on('change', (c) => {
+            const key = getKey(c, 'change');
+            if (!shouldProcess(key, 5000)) return;
+            emit('contact_change', serializeContact(c));
+          });
+
+          Contact.on('remove', (c) => {
+            const key = getKey(c, 'remove');
+            if (!shouldProcess(key, 120000)) return;
+            emit('contact_remove', serializeContact(c));
+          });
+
+          // Initial contacts batching
+          try {
+            const getAll = () => {
+              if (typeof Contact.getModelsArray === 'function') return Contact.getModelsArray();
+              if (Array.isArray(Contact.models)) return Contact.models;
+              return [];
+            };
+            const all = getAll();
+            const total = all.length;
+            if (total > 0) {
+              const batchSize = 200;
+              for (let i = 0; i < total; i += batchSize) {
+                const slice = all.slice(i, i + batchSize).map(serializeContact);
+                emit('contacts_initial', {
+                  countTotal: total,
+                  batchIndex: Math.floor(i / batchSize),
+                  batchSize: slice.length,
+                  contacts: slice
+                });
+              }
+            }
+          } catch (e) {
+            log('Failed to emit initial contacts: ' + String(e));
+          }
+
+          window.listenersInjected = (window.listenersInjected || 0) + 3;
+          log('Contact listeners attached');
+        } else {
+          log('Contact collection has no .on method');
+        }
+      } else {
+        log('No Contact collection available');
+      }
     } catch (e) {
-      log('Contact setup skipped due to error: ' + String(e));
+      log('Contact setup error: ' + String(e));
     }
+
+    // Presence events (no filtering, pass-through)
+    try {
+      const getPresenceCollection = () => {
+        if (Store.Presence && typeof Store.Presence.on === 'function') return Store.Presence;
+        try {
+          const mod = window.require && window.require('WAWebPresenceCollection');
+          if (mod && mod.PresenceCollection) return mod.PresenceCollection;
+        } catch (e) {}
+        return null;
+      };
+      
+      const Presence = getPresenceCollection();
+      if (Presence) {
+        log('Setting up presence listeners');
+        if (typeof Presence.on === 'function') {
+          Presence.on('add', (p) => {
+            emit('presence_add', JSON.parse(JSON.stringify(p)));
+          });
+          Presence.on('change', (p) => {
+            emit('presence_change', JSON.parse(JSON.stringify(p)));
+          });
+          Presence.on('remove', (p) => {
+            emit('presence_remove', JSON.parse(JSON.stringify(p)));
+          });
+          // Initial snapshot if available
+          try {
+            const getAll = () => {
+              if (typeof Presence.getModelsArray === 'function') return Presence.getModelsArray();
+              if (Array.isArray(Presence.models)) return Presence.models;
+              return [];
+            };
+            const all = getAll();
+            if (all.length > 0) {
+              emit('presence_initial', { 
+                countTotal: all.length, 
+                presences: all.map(p => JSON.parse(JSON.stringify(p)))
+              });
+            }
+          } catch (e) {
+            log('Failed to emit initial presence: ' + String(e));
+          }
+          window.listenersInjected = (window.listenersInjected || 0) + 3;
+          log('Presence listeners attached');
+        } else {
+          log('Presence collection has no .on method');
+        }
+      } else {
+        log('No Presence collection available');
+      }
+    } catch (e) {
+      log('Presence setup error: ' + String(e));
+    }
+
+    // Set injection completion flag
+    window.injectionComplete = true;
 
     log('Store setup complete');
     emit('store_ready', { 
